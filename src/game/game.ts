@@ -970,7 +970,7 @@ export class Game implements HudBridge {
     if (near.kind === 'sign') {
       this.hud.say(
         'The old sign',
-        'POWSHAN — a little valley, named for Powi and Sean, the couple who came with the farmer. Population: one farmer, six cats, and an oak that has seen better centuries. The field is west of the gate; the well is south of the seed stand.',
+        'POWSHAN. The field is west of the gate. The well is south of the seed stand.',
       );
       return;
     }
@@ -1029,7 +1029,7 @@ export class Game implements HudBridge {
     if (this.save.awake) {
       this.hud.say(
         'The old well',
-        'The water is high and warm, and it smells faintly of rain even on clear days. When you look in, the whole valley looks back.',
+        'The water is high and clear. It runs even on dry days now.',
       );
       return;
     }
