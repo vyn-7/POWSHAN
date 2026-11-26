@@ -125,6 +125,8 @@ interface CatActor {
   retargetClock: number;
   /** A short hop away after a refused pat. */
   dodgeClock: number;
+  /** Seconds left on a zoomie sprint (fast, no target settling). */
+  zoomClock: number;
   /** A little pixel emote above the cat: !, ?, Z. */
   emote: string;
   emoteClock: number;
@@ -612,6 +614,7 @@ export class Game implements HudBridge {
         callClock: 0,
         retargetClock: 0,
         dodgeClock: 0,
+        zoomClock: 0,
         emote: '',
         emoteClock: 0,
       };
@@ -1140,6 +1143,7 @@ export class Game implements HudBridge {
       cat.callClock = Math.max(0, cat.callClock - dt);
       cat.retargetClock = Math.max(0, cat.retargetClock - dt);
       cat.dodgeClock = Math.max(0, cat.dodgeClock - dt);
+      cat.zoomClock = Math.max(0, cat.zoomClock - dt);
       cat.emoteClock = Math.max(0, cat.emoteClock - dt);
       if (cat.emoteClock === 0) cat.emote = '';
 
@@ -1229,7 +1233,7 @@ export class Game implements HudBridge {
           cat.pose = 'idle';
           cat.timer = 0.9 + Math.random() * 2.4;
         } else {
-          const speed = 11 + profile.energy * 8 + (cat.dodgeClock > 0 ? 8 : 0);
+          const speed = 11 + profile.energy * 8 + (cat.dodgeClock > 0 ? 8 : 0) + (cat.zoomClock > 0 ? 26 : 0);
           const step = Math.min(length, speed * dt);
           const nx = cat.x + (dx / length) * step;
           const ny = cat.y + (dy / length) * step;
@@ -1255,25 +1259,57 @@ export class Game implements HudBridge {
           cat.pose = 'sit';
           cat.timer = 3 + Math.random() * 5;
           cat.frame = 0;
+        } else if (temperament.zoomies && Math.random() < temperament.zoomies) {
+          // The zoomies: a sudden fast sprint to a far point, no settling.
+          cat.pose = 'walk';
+          cat.moving = true;
+          cat.zoomClock = 1.4 + Math.random() * 1.2;
+          cat.timer = cat.zoomClock + 0.4;
+          const angle = Math.random() * Math.PI * 2;
+          const distance = 60 + Math.random() * 90;
+          let tx = cat.x + Math.cos(angle) * distance;
+          let ty = cat.y + Math.sin(angle) * distance * 0.7;
+          for (let attempt = 0; attempt < 8 && catBlocked(tx, ty); attempt++) {
+            const a = Math.random() * Math.PI * 2;
+            tx = cat.x + Math.cos(a) * distance;
+            ty = cat.y + Math.sin(a) * distance * 0.7;
+          }
+          cat.targetX = catBlocked(tx, ty) ? cat.homeX : tx;
+          cat.targetY = catBlocked(tx, ty) ? cat.homeY : ty;
+          cat.emote = '!';
+          cat.emoteClock = 0.8;
         } else {
           cat.pose = 'walk';
           cat.moving = true;
           cat.timer = 7;
+          const partner = temperament.bond
+            ? this.cats.find((other) => other.profile.id === temperament.bond)
+            : undefined;
           const company = Math.random() < temperament.follow && playerDistance < 170;
+          const stayNearPartner = partner && Math.random() < 0.5;
           const stand = Math.max(20, temperament.keepAway + 10);
-          let targetX = cat.homeX;
-          let targetY = cat.homeY;
+          let anchorX = cat.homeX;
+          let anchorY = cat.homeY;
           if (company) {
+            anchorX = this.player.x;
+            anchorY = this.player.y;
+          } else if (stayNearPartner && partner) {
+            anchorX = partner.x;
+            anchorY = partner.y;
+          }
+          let targetX = anchorX;
+          let targetY = anchorY;
+          if (company || stayNearPartner) {
             const angle = Math.random() * Math.PI * 2;
-            targetX = this.player.x + Math.cos(angle) * stand;
-            targetY = this.player.y + Math.sin(angle) * stand;
+            targetX = anchorX + Math.cos(angle) * stand;
+            targetY = anchorY + Math.sin(angle) * stand;
           }
           for (let attempt = 0; attempt < 8; attempt++) {
             if (!catBlocked(targetX, targetY)) break;
             const angle = Math.random() * Math.PI * 2;
             const distance = 8 + Math.random() * profile.roam * TILE * 0.7;
-            targetX = (company ? this.player.x : cat.homeX) + Math.cos(angle) * distance;
-            targetY = (company ? this.player.y : cat.homeY) + Math.sin(angle) * distance * 0.68;
+            targetX = anchorX + Math.cos(angle) * distance;
+            targetY = anchorY + Math.sin(angle) * distance * 0.68;
           }
           if (catBlocked(targetX, targetY)) {
             targetX = cat.homeX;

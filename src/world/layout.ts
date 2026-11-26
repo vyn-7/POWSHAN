@@ -256,10 +256,10 @@ export const SOLID_CIRCLES: Array<{ x: number; y: number; r: number }> = [
   // Loose stones and the little weed clumps that used to be pure decoration.
   { x: 20.8 * TILE, y: 30.2 * TILE - 2, r: 8 },
   { x: 41.2 * TILE, y: 19.1 * TILE - 2, r: 8 },
-  ...WEEDS.map((weed) => ({
+  ...WEEDS.filter((weed) => weed.kind !== 'weed').map((weed) => ({
     x: weed.x,
     y: weed.y - 2,
-    r: weed.kind === 'weed' ? 3 : weed.kind === 'stone' ? 6 : 7,
+    r: weed.kind === 'stone' ? 6 : 7,
   })),
 ];
 

@@ -13,6 +13,11 @@ export interface Temperament {
   dodgesPat: boolean;
   /** Seconds of quiet company before trust rises. 0 = never by proximity. */
   settles: number;
+  /** Another cat this one likes to stay near. When set, the cat sometimes
+   *  picks a wander target beside its partner instead of its own home. */
+  bond?: CatId;
+  /** 0..1 — chance, when idle, of breaking into a fast zoomie sprint. */
+  zoomies?: number;
 }
 
 export interface CatProfile {
@@ -68,7 +73,7 @@ export const CATS: CatProfile[] = [
     sleepiness: 0.45,
     energy: 0.55,
     voice: 1,
-    temperament: { follow: 0.8, keepAway: 0, answers: 1, dodgesPat: false, settles: 0 },
+    temperament: { follow: 0.8, keepAway: 0, answers: 1, dodgesPat: false, settles: 0, bond: 'powi' },
   },
   {
     id: 'powi',
@@ -89,7 +94,7 @@ export const CATS: CatProfile[] = [
     sleepiness: 0.9,
     energy: 0.28,
     voice: 2,
-    temperament: { follow: 0.2, keepAway: 12, answers: 0.45, dodgesPat: false, settles: 9 },
+    temperament: { follow: 0.2, keepAway: 12, answers: 0.45, dodgesPat: false, settles: 9, bond: 'sean' },
   },
   {
     id: 'uling',
@@ -109,7 +114,7 @@ export const CATS: CatProfile[] = [
     sleepiness: 0.2,
     energy: 1,
     voice: 4,
-    temperament: { follow: 0.1, keepAway: 44, answers: 0.2, dodgesPat: false, settles: 0 },
+    temperament: { follow: 0.1, keepAway: 52, answers: 0.12, dodgesPat: false, settles: 0 },
   },
   {
     id: 'adidas',
@@ -151,7 +156,7 @@ export const CATS: CatProfile[] = [
     sleepiness: 0.5,
     energy: 0.6,
     voice: 5,
-    temperament: { follow: 0.8, keepAway: 10, answers: 0.7, dodgesPat: false, settles: 0 },
+    temperament: { follow: 0.8, keepAway: 10, answers: 0.7, dodgesPat: false, settles: 0, zoomies: 0.5 },
   },
   {
     id: 'mumu',
