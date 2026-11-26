@@ -1,0 +1,91 @@
+/** One palette for the whole valley. Warm ochres against green, with a single
+ *  indigo for shadows so nothing drifts toward muddy grey. */
+
+export const C = {
+  ink: '#2b1e16',
+  inkSoft: '#483024',
+  inkFaint: '#6b4c37',
+  cream: '#f7e9c9',
+  creamDeep: '#e8d3a9',
+  paper: '#f1e2c0',
+  paperDeep: '#d9c093',
+  gold: '#e8b45a',
+  goldDeep: '#b97e2f',
+  coin: '#f0c25e',
+  rose: '#c96a5a',
+
+  grass: ['#7aa84e', '#72a047', '#84b258', '#6c9843', '#8dbd61'],
+  grassDark: ['#5e893b', '#557d36', '#648f41'],
+  grassLight: '#9dcb6d',
+  grassShadow: '#4b6f31',
+  grassWhite: '#c8dd8f',
+
+  path: ['#c9a56f', '#c09a63', '#d2ae79', '#b78f59'],
+  pathDark: '#9d7649',
+  pathLight: '#dfc08c',
+  gravel: '#8d6a45',
+
+  soil: '#8b5c3e',
+  soilDark: '#6f4530',
+  soilDeep: '#593626',
+  soilLight: '#a57752',
+  soilWet: '#5d3a2b',
+  soilWetDark: '#48291f',
+
+  water: '#4f8796',
+  waterMid: '#5b98a3',
+  waterLight: '#7db8b8',
+  waterDeep: '#386c7c',
+  waterFoam: '#cfe4d4',
+  waterShimmer: '#a9d8cf',
+
+  wood: '#7a4b2c',
+  woodDark: '#52301d',
+  woodDarker: '#3a2114',
+  woodLight: '#a06d3f',
+  plank: '#8c5b35',
+
+  roof: '#b0563d',
+  roofDark: '#8a3f2e',
+  roofDarker: '#6d3024',
+  roofLight: '#c96d4c',
+  roofEdge: '#d98a63',
+
+  leaf: ['#3d6b34', '#4a7d3b', '#588f44', '#699e4e', '#7dab5a'],
+  leafDark: '#2f552a',
+  leafLight: '#8fbd68',
+  leafPale: '#a9cd80',
+  leafBack: '#335c31',
+
+  stone: '#8e8a7c',
+  stoneDark: '#6c685c',
+  stoneLight: '#aca796',
+  stoneWarm: '#a2947c',
+
+  skin: '#f2c69a',
+  skinShade: '#d5a175',
+  skinDark: '#b27b54',
+  hair: '#7b4529',
+  hairLight: '#975b36',
+  hat: '#e3bd6a',
+  hatLight: '#f2d78f',
+  hatShade: '#c2984c',
+  hatBand: '#b0523a',
+  shirt: '#f1e3c1',
+  shirtShade: '#d2bd95',
+  denim: '#4f728c',
+  denimLight: '#6689a3',
+  denimDark: '#3a566b',
+  boot: '#6a432c',
+  bootDark: '#432a1c',
+
+  blossom: '#f3a6b8',
+  blossomLight: '#f8ccd5',
+  clip: '#8a5bd6',
+  clipLight: '#b78cf0',
+  clipDark: '#5f3aa8',
+  flower: ['#f4d06f', '#e8867b', '#c9a7df', '#f6f0dc', '#8fc4e8'],
+  fruit: '#d15b45',
+} as const;
+
+export const TAU = Math.PI * 2;

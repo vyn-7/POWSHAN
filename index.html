@@ -1,39 +1,347 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Powshan — a little valley</title>
     <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      name="description"
+      content="A gentle farming game about coming home. Plant, water, meet six cats, and wake the old well."
     />
-    <title>Meow</title>
-    <link rel="icon" type="image/png" href="./assets/powi.png" />
-    <link rel="stylesheet" href="style.css" />
-    <audio id="bg-music" src="./assets/audio/bg-music.mp3" loop></audio>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
-      rel="stylesheet"
-    />
+    <meta name="theme-color" content="#1b2419" />
+    <meta property="og:title" content="Powshan — a little valley" />
+    <meta property="og:description" content="A hand-pixelled farming game about coming home." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://powshan.vercel.app/" />
+    <meta property="og:image" content="/og.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/pixelify-sans.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/src/styles.css" />
   </head>
   <body>
-    <div id="loading-screen">
-      <p>Loading...</p>
+    <div id="app">
+      <main id="stage" aria-label="Powshan valley">
+        <canvas
+          id="game"
+          width="480"
+          height="270"
+          role="img"
+          aria-label="A top-down pixel farm at the edge of a wood. A farmer in a straw hat stands by a small farmhouse."
+        ></canvas>
+
+        <div class="stage__vignette" aria-hidden="true"></div>
+        <div class="stage__grain" aria-hidden="true"></div>
+
+        <div id="hud" class="hud is-hidden">
+          <div class="hud__top">
+            <button id="journal-btn" class="chip chip--button" type="button" aria-haspopup="dialog" aria-controls="journal">
+              <span class="chip__leaf" aria-hidden="true"></span>
+              <span>Field notes</span>
+              <span id="goal-count" class="chip__badge">0 / 5</span>
+            </button>
+
+            <div class="status" aria-label="Date, weather and time">
+              <canvas id="weather-icon" class="status__weather" width="16" height="16" aria-hidden="true"></canvas>
+              <span id="weather-label" class="status__weather-label">Sunny</span>
+              <span id="season-label" class="status__date">Spring</span>
+              <span id="day-label" class="status__day">Day 1</span>
+              <span id="clock-label" class="status__time">6:00 AM</span>
+            </div>
+          </div>
+
+          <div class="hud__left">
+            <div class="energy" aria-label="Energy">
+              <span class="energy__label">Energy</span>
+              <div class="energy__track"><div id="energy-fill" class="energy__fill"></div></div>
+            </div>
+            <div class="chips">
+              <span class="mini" aria-label="Gold">
+                <canvas id="coin-icon" width="14" height="14" aria-hidden="true"></canvas>
+                <b id="gold-count">80</b>
+              </span>
+              <span class="mini" aria-label="Water in the can">
+                <canvas id="water-icon" width="18" height="18" aria-hidden="true"></canvas>
+                <b id="water-count">20</b>
+              </span>
+            </div>
+          </div>
+
+          <div id="prompt" class="prompt is-hidden" role="status">
+            <kbd>E</kbd><span id="prompt-text"></span>
+          </div>
+
+          <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+          <div id="dialogue" class="dialogue is-hidden" role="status">
+            <div id="dialogue-portrait" class="dialogue__portrait" aria-hidden="true"></div>
+            <div class="dialogue__body">
+              <span id="dialogue-name" class="dialogue__name"></span>
+              <p id="dialogue-text" class="dialogue__text"></p>
+            </div>
+            <span class="dialogue__dots" aria-hidden="true">···</span>
+          </div>
+
+          <div id="hotbar" class="hotbar" role="toolbar" aria-label="Tools and seeds"></div>
+
+          <div id="hint" class="hint" aria-hidden="true">
+            <span><kbd>WASD</kbd> walk</span>
+            <span><kbd>Space</kbd> use</span>
+            <span><kbd>E</kbd> talk</span>
+            <span><kbd>C</kbd> call</span>
+            <span><kbd>J</kbd> notes</span>
+          </div>
+
+          <div id="daycard" class="daycard" aria-live="polite">
+            <div class="daycard__inner">
+              <p class="daycard__kicker" id="daycard-kicker">Spring</p>
+              <p class="daycard__title" id="daycard-title">Day 1</p>
+              <p class="daycard__sub" id="daycard-sub">A good day to begin.</p>
+            </div>
+          </div>
+
+          <div class="touch" id="touch" aria-hidden="true">
+            <div id="stick" class="stick"><div id="stick-knob" class="stick__knob"></div></div>
+            <div class="touch__actions">
+              <button id="touch-use" class="touch__btn touch__btn--use" type="button">Use</button>
+              <button id="touch-act" class="touch__btn" type="button">Talk</button>
+              <button id="touch-call" class="touch__btn" type="button">Call</button>
+            </div>
+          </div>
+        </div>
+
+        <section id="title" class="title" aria-label="Powshan title screen">
+          <div class="title__shade" aria-hidden="true"></div>
+          <div class="title__content">
+            <p class="title__kicker">a hand-pixelled valley</p>
+            <h1 class="logo">
+              <span class="logo__sprig" aria-hidden="true">
+                <svg viewBox="0 0 24 28" width="100%" height="100%" shape-rendering="crispEdges">
+                  <path d="M12 27V11" stroke="#2b1e16" stroke-width="2" />
+                  <path d="M12 17C6 16 4 11 4 6c5 0 8 5 8 11Z" fill="#6e9d51" stroke="#2b1e16" stroke-width="1" />
+                  <path d="M12 13c5-1 8-6 8-11-5 0-8 4-8 11Z" fill="#8fbd68" stroke="#2b1e16" stroke-width="1" />
+                  <path d="M12 22c-4 0-6-3-6-6 4 0 6 2 6 6Z" fill="#557d42" stroke="#2b1e16" stroke-width="1" />
+                </svg>
+              </span>
+              POWSHAN
+              <span class="logo__sprig logo__sprig--flip" aria-hidden="true">
+                <svg viewBox="0 0 24 28" width="100%" height="100%" shape-rendering="crispEdges">
+                  <path d="M12 27V11" stroke="#2b1e16" stroke-width="2" />
+                  <path d="M12 17C6 16 4 11 4 6c5 0 8 5 8 11Z" fill="#6e9d51" stroke="#2b1e16" stroke-width="1" />
+                  <path d="M12 13c5-1 8-6 8-11-5 0-8 4-8 11Z" fill="#8fbd68" stroke="#2b1e16" stroke-width="1" />
+                  <path d="M12 22c-4 0-6-3-6-6 4 0 6 2 6 6Z" fill="#557d42" stroke="#2b1e16" stroke-width="1" />
+                </svg>
+              </span>
+            </h1>
+            <p class="title__sub">come home to the meadow</p>
+            <div class="title__actions">
+              <button id="play" class="btn btn--primary" type="button">Step into the meadow</button>
+              <button id="fresh" class="btn btn--continue is-hidden" type="button">Start a new valley</button>
+              <button id="about-title" class="btn btn--quiet" type="button">About the valley</button>
+            </div>
+            <p id="title-save" class="title__save is-hidden"></p>
+            <p class="title__foot">
+              A small farming game about coming home to the cats.
+            </p>
+          </div>
+          <footer class="title__footer">
+            <a href="https://github.com/vyn-7/powshan" target="_blank" rel="noreferrer">source on GitHub</a>
+            <span aria-hidden="true">·</span>
+            <span>made by vyn-7</span>
+          </footer>
+        </section>
+
+        <div id="fade" class="fade" aria-hidden="true"></div>
+      </main>
+
+      <dialog id="journal" class="sheet sheet--journal" aria-labelledby="journal-title">
+        <div class="sheet__grain" aria-hidden="true"></div>
+        <header class="sheet__head">
+          <div>
+            <p class="sheet__kicker">Powshan valley</p>
+            <h2 id="journal-title">Field notes</h2>
+          </div>
+          <button class="iconbtn" data-close aria-label="Close field notes" type="button">✕</button>
+        </header>
+        <nav class="tabs" aria-label="Field notes sections">
+          <button class="tab is-active" data-tab="notes" aria-selected="true" type="button">Notes</button>
+          <button class="tab" data-tab="cats" aria-selected="false" type="button">Cats</button>
+          <button class="tab" data-tab="build" aria-selected="false" type="button">About</button>
+        </nav>
+        <div class="sheet__body">
+          <section class="tabpane is-active" data-pane="notes" aria-label="Notes"></section>
+          <section class="tabpane" data-pane="cats" aria-label="Cats"></section>
+          <section class="tabpane" data-pane="build" aria-label="The build"></section>
+        </div>
+      </dialog>
+
+      <dialog id="shop" class="sheet sheet--shop" aria-labelledby="shop-title">
+        <div class="sheet__grain" aria-hidden="true"></div>
+        <header class="sheet__head">
+          <div>
+            <p class="sheet__kicker">the old seed stand</p>
+            <h2 id="shop-title">Seeds for the season</h2>
+          </div>
+          <button class="iconbtn" data-close aria-label="Close seed stand" type="button">✕</button>
+        </header>
+        <div class="sheet__body" id="shop-body"></div>
+        <footer class="sheet__foot">
+          <p class="muted">Leave your coins in the tin. Seeds go in tilled soil; water them, sleep, and they grow.</p>
+          <span class="shop__gold">
+            <canvas id="shop-coin" width="14" height="14" aria-hidden="true"></canvas>
+            <b id="shop-gold">80</b>
+          </span>
+        </footer>
+      </dialog>
+
+      <dialog id="pause" class="sheet sheet--pause" aria-labelledby="pause-title">
+        <div class="sheet__grain" aria-hidden="true"></div>
+        <header class="sheet__head">
+          <div>
+            <p class="sheet__kicker">A quiet pause</p>
+            <h2 id="pause-title">Powshan</h2>
+          </div>
+          <button class="iconbtn" data-close aria-label="Resume game" type="button">✕</button>
+        </header>
+        <div class="sheet__body">
+          <div class="menu">
+            <button class="btn btn--paper" data-action="resume" type="button">Back to the valley</button>
+            <button class="btn btn--paper" data-action="journal" type="button">Field notes</button>
+            <button class="btn btn--paper" data-action="about" type="button">About the valley</button>
+            <button class="btn btn--paper" data-action="mute" type="button">Sound: on</button>
+            <button class="btn btn--paper" data-action="title" type="button">Save and return to title</button>
+          </div>
+          <div class="pause__bottom">
+            <button class="textbtn" data-action="reset" type="button">Start a new valley</button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog id="confirm" class="sheet sheet--small" aria-labelledby="confirm-title">
+        <div class="sheet__grain" aria-hidden="true"></div>
+        <header class="sheet__head">
+          <div>
+            <p class="sheet__kicker">One moment</p>
+            <h2 id="confirm-title">Start a new valley?</h2>
+          </div>
+          <button class="iconbtn" data-close aria-label="Cancel" type="button">✕</button>
+        </header>
+        <div class="sheet__body">
+          <p id="confirm-text" class="lede">This will replace the valley you are keeping now.</p>
+          <div class="confirm__actions">
+            <button class="btn btn--paper btn--inline" data-close type="button">Keep my valley</button>
+            <button id="confirm-yes" class="btn btn--primary btn--inline" type="button">Start fresh</button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog id="sleep" class="sheet sheet--small" aria-labelledby="sleep-title">
+        <div class="sheet__grain" aria-hidden="true"></div>
+        <header class="sheet__head">
+          <div>
+            <p class="sheet__kicker">The day is done</p>
+            <h2 id="sleep-title">Sleep until morning?</h2>
+          </div>
+          <button class="iconbtn" data-close aria-label="Not yet" type="button">✕</button>
+        </header>
+        <div class="sheet__body">
+          <p class="lede" id="sleep-text">The crops grow while you sleep. Watered soil makes all the difference.</p>
+          <p class="forecast"><span>Tomorrow</span><b id="sleep-forecast">Sunny</b></p>
+          <div class="confirm__actions">
+            <button class="btn btn--paper btn--inline" data-close type="button">Stay up</button>
+            <button id="sleep-yes" class="btn btn--primary btn--inline" type="button">Sleep</button>
+          </div>
+        </div>
+      </dialog>
+
+      <dialog id="intro" class="intro" aria-labelledby="intro-title">
+        <div class="intro__grain" aria-hidden="true"></div>
+        <p class="intro__kicker">moving day</p>
+        <h2 id="intro-title">Who is moving in?</h2>
+        <p class="intro__lede">
+          You have just moved to the valley for a quieter life on the farm. You came with your two cats, Sean and
+          Powi — a couple, and the whole reason the place is called POWSHAN. The other cats are out there somewhere,
+          and you will meet them one by one.
+        </p>
+        <label class="intro__label" for="farmer-name">Your name</label>
+        <input
+          id="farmer-name"
+          class="intro__input"
+          type="text"
+          maxlength="16"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="Rowan"
+        />
+        <p class="intro__label" id="intro-avatar-label">Choose your farmer</p>
+        <div class="avatars" role="group" aria-labelledby="intro-avatar-label">
+          <button class="avatar" type="button" data-avatar="boy" aria-pressed="false">
+            <canvas width="48" height="48" data-avatar-art="boy" aria-hidden="true"></canvas>
+            <span>Boy</span>
+          </button>
+          <button class="avatar" type="button" data-avatar="girl" aria-pressed="true">
+            <canvas width="48" height="48" data-avatar-art="girl" aria-hidden="true"></canvas>
+            <span>Girl</span>
+          </button>
+        </div>
+        <button id="intro-begin" class="btn btn--primary" type="button">Open the gate</button>
+      </dialog>
+
+      <dialog id="letter" class="letter" aria-labelledby="letter-title">
+        <div class="letter__seal" aria-hidden="true">
+          <span></span>
+        </div>
+        <p class="letter__kicker">found on the kitchen table</p>
+        <h2 id="letter-title">Dear you,</h2>
+        <div class="letter__body">
+          <p>
+            So you are the one who took the cottage. Good. I kept this valley for years and loved it, but it is
+            yours now — the field is a little wild and the old well has run dry, and the cats have been waiting for
+            someone with softer hands than mine.
+          </p>
+          <p>
+            Settle in with your two. Plant something, wander, and the rest of the cats will find you in their own
+            time. When the moonflowers bloom, bring three to the old well — you will know what to do.
+          </p>
+        </div>
+        <p class="letter__sign">— Nan, who kept it before you</p>
+        <button id="letter-begin" class="btn btn--primary" type="button">Open the gate</button>
+      </dialog>
+
+      <dialog id="finale" class="sheet sheet--small sheet--finale" aria-labelledby="finale-title">
+        <div class="sheet__grain" aria-hidden="true"></div>
+        <header class="sheet__head">
+          <div>
+            <p class="sheet__kicker">Spring, and the water is running</p>
+            <h2 id="finale-title">The valley is awake.</h2>
+          </div>
+        </header>
+        <div class="sheet__body">
+          <p class="lede" id="finale-text">
+            The old well fills. Lanterns catch. Somewhere in the wood, six cats stop what they are doing and look up.
+          </p>
+          <div class="stats" id="finale-stats"></div>
+          <div class="confirm__actions">
+            <button id="finale-close" class="btn btn--primary btn--inline" type="button">Keep wandering</button>
+          </div>
+        </div>
+      </dialog>
+
+      <div id="rotate" class="rotate" aria-hidden="true">
+        <div class="rotate__icon">↻</div>
+        <p>Turn your phone sideways to walk the valley.</p>
+      </div>
+
+      <div id="boot" class="boot" aria-hidden="true">
+        <div class="boot__mark">POWSHAN</div>
+        <div class="boot__bar"><span></span></div>
+      </div>
+
+      <noscript>
+        <p class="noscript">Powshan needs JavaScript to draw the valley.</p>
+      </noscript>
     </div>
 
-    <div id="menu-screen" class="hidden">
-      <h1 class="title">POWSHAN</h1>
-      <p class="click-text">Click anywhere to proceed.</p>
-    </div>
-    <div id="game-wrapper" class="hidden">
-      <canvas id="game-canvas"></canvas>
-      <div id="status-text">Time: 12:00 AM</div>
-      <div id="message-log"></div>
-    </div>
-    <div id="touch-controls" class="hidden">
-      <button id="left-btn">⟵</button>
-      <button id="right-btn">⟶</button>
-      <button id="spawn-btn">Spawn mouse</button>
-    </div>
-    <script src="script.js" defer></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
