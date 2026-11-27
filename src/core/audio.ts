@@ -22,10 +22,14 @@ export class AudioSystem {
   private musicStep = 0;
   private unlocked = false;
   muted = false;
+  /** Master volume, 0..1 (the pause-menu slider). */
+  volume = 0.85;
 
   constructor() {
     try {
       this.muted = window.localStorage.getItem('powshan.sound') === 'off';
+      const stored = Number(window.localStorage.getItem('powshan.volume'));
+      if (Number.isFinite(stored) && stored >= 0 && stored <= 1) this.volume = stored;
     } catch {
       this.muted = false;
     }
@@ -45,7 +49,7 @@ export class AudioSystem {
       this.ctx = new Ctor();
       const ctx = this.ctx;
       this.master = ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 0.85;
+      this.master.gain.value = this.muted ? 0 : this.volume;
       this.master.connect(ctx.destination);
 
       const noise = this.noiseBuffer(ctx, 2.5);
@@ -99,12 +103,37 @@ export class AudioSystem {
     } catch {
       // ignore
     }
-    if (this.master && this.ctx) {
-      this.master.gain.cancelScheduledValues(this.ctx.currentTime);
-      this.master.gain.linearRampToValueAtTime(muted ? 0 : 0.85, this.ctx.currentTime + 0.2);
-    }
+    this.applyGain();
     if (muted) {
       for (const meow of this.meows) meow.pause();
+    }
+  }
+
+  /** Set the master volume (0..1) from the pause-menu slider. */
+  setVolume(volume: number): void {
+    this.volume = Math.max(0, Math.min(1, volume));
+    try {
+      window.localStorage.setItem('powshan.volume', String(this.volume));
+    } catch {
+      // ignore
+    }
+    // Moving the slider is an explicit "I want to hear this" — unmute.
+    if (this.volume > 0 && this.muted) {
+      this.muted = false;
+      try {
+        window.localStorage.setItem('powshan.sound', 'on');
+      } catch {
+        // ignore
+      }
+    }
+    this.applyGain();
+  }
+
+  private applyGain(): void {
+    if (this.master && this.ctx) {
+      const target = this.muted ? 0 : this.volume;
+      this.master.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.master.gain.linearRampToValueAtTime(target, this.ctx.currentTime + 0.1);
     }
   }
 

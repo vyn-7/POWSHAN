@@ -450,6 +450,30 @@ export function renderTerrain(): HTMLCanvasElement {
   // ---- water ----
   paintStream(ctx, bag);
   paintPond(ctx, bag);
+  // The pond's muddy bank ellipse is painted over the stream's mouth, which
+  // sealed the two apart behind a bar of bank. Lay a straight water channel of
+  // the stream's own width over that bar where it feeds in, so the current
+  // visibly runs into the pond instead of butting against a dam.
+  {
+    const [mx, my] = STREAM[STREAM.length - 1];
+    const cx = mx + 4; // nudge the mouth a touch right so it sits naturally in the bank
+    // Start high enough to bury the pond's outer bank ring (its top edge sits a
+    // few pixels above the stream mouth) and run down into the pond, so no bar
+    // of bank is left cutting across the current.
+    for (let i = 0; i < 26; i++) {
+      const t = i / 25;
+      const y = Math.round(my - 15 + i);
+      // gentle wobble + a flare at the mouth so it reads as a delta, not a slab
+      const wobble = ((i * 5) % 3) - 1;
+      const w = Math.round(13 + t * 6 + wobble);
+      rect(ctx, cx - w, y, w * 2, 1, C.water);
+    }
+    // a small spill of foam right at the mouth, not a ring
+    px(ctx, cx - 7, my + 8, C.waterFoam);
+    px(ctx, cx + 8, my + 9, C.waterShimmer);
+    px(ctx, cx - 2, my + 10, C.waterFoam);
+    px(ctx, cx + 3, my + 11, C.waterLight);
+  }
 
   // ---- the farm field's worn edge ----
   for (let x = FIELD.x - 8; x < FIELD.x + FIELD.w + 8; x += 5) {

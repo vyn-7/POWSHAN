@@ -1,5 +1,5 @@
 import { AudioSystem } from '../core/audio';
-import { tinyText } from '../core/canvas';
+import { RENDER_SCALE, tinyText } from '../core/canvas';
 import { clamp, damp } from '../core/rng';
 import { Input, type Dir, type InputFrame } from '../core/input';
 import { Loop } from '../core/loop';
@@ -41,6 +41,7 @@ import {
 import { Particles } from '../render/particles';
 import { softShadow } from '../render/shadow';
 import { renderTerrain } from '../render/terrain';
+import { drawWater } from '../render/water';
 import {
   growOvernight,
   harvest as harvestCrop,
@@ -127,6 +128,12 @@ interface CatActor {
   dodgeClock: number;
   /** Seconds left on a zoomie sprint (fast, no target settling). */
   zoomClock: number;
+  /** Drives the periodic hearts while a bonded pair sleeps together. */
+  cuddleClock: number;
+  /** Seconds left in a mutual play-chase; while > 0 the cat runs with a friend. */
+  playClock: number;
+  /** The cat this one is playing/chasing with. */
+  playMate: string;
   /** A little pixel emote above the cat: !, ?, Z. */
   emote: string;
   emoteClock: number;
@@ -214,6 +221,7 @@ export class Game implements HudBridge {
   private fireflyAccumulator = 0;
   private petalAccumulator = 0;
   private smokeAccumulator = 0;
+  private waterClock = 0;
   private nudgeClock = 0;
   private callCooldown = 0;
   private calledMumu = false;
@@ -233,6 +241,8 @@ export class Game implements HudBridge {
   };
 
   constructor(canvas: HTMLCanvasElement) {
+    canvas.width = VIEW_W * RENDER_SCALE;
+    canvas.height = VIEW_H * RENDER_SCALE;
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Canvas 2D is not available.');
     this.ctx = ctx;
@@ -255,7 +265,7 @@ export class Game implements HudBridge {
     this.buildCats();
 
     this.hud.setBridge(this);
-    this.hud.setMuted(this.audio.muted);
+    this.hud.setVolume(this.audio.volume);
     this.showTitle();
     this.hud.update(this.view());
 
@@ -449,8 +459,13 @@ export class Game implements HudBridge {
 
   toggleMute(): boolean {
     this.audio.setMuted(!this.audio.muted);
-    this.hud.setMuted(this.audio.muted);
     return this.audio.muted;
+  }
+
+  setVolume(volume: number): void {
+    this.audio.setVolume(volume);
+    // Reflect any auto-unmute back onto the slider.
+    this.hud.setVolume(this.audio.volume);
   }
 
   buySeed(crop: CropId): void {
@@ -480,7 +495,7 @@ export class Game implements HudBridge {
     if (total <= 0) return;
     this.save.gold += total;
     this.audio.coin();
-    this.hud.toast(`Sold ${parts.join(' and ')} for ${total}g.`);
+    this.hud.toast(`Sold ${parts.join(' and ')} for ${total} coins.`);
     this.hud.refreshShop(this.save);
     this.persist();
   }
@@ -615,6 +630,9 @@ export class Game implements HudBridge {
         retargetClock: 0,
         dodgeClock: 0,
         zoomClock: 0,
+        cuddleClock: 0,
+        playClock: 0,
+        playMate: '',
         emote: '',
         emoteClock: 0,
       };
@@ -624,6 +642,7 @@ export class Game implements HudBridge {
 
   private readonly step = (dt: number): void => {
     const frame = this.input.consume();
+    this.waterClock += dt;
     this.audio.update(dt, {
       night: isNight(this.visualMinutes()),
       rain: this.visualWeather() === 'rain',
@@ -664,7 +683,7 @@ export class Game implements HudBridge {
     if (frame.pause) {
       this.audio.click();
       this.persist();
-      this.hud.openPause(this.audio.muted);
+      this.hud.openPause(this.audio.volume);
       return;
     }
     if (frame.journal) {
@@ -1146,6 +1165,22 @@ export class Game implements HudBridge {
       cat.zoomClock = Math.max(0, cat.zoomClock - dt);
       cat.emoteClock = Math.max(0, cat.emoteClock - dt);
       if (cat.emoteClock === 0) cat.emote = '';
+      cat.cuddleClock = Math.max(0, cat.cuddleClock - dt);
+      cat.playClock = Math.max(0, cat.playClock - dt);
+      // A bonded pair that has settled together keeps a slow drift of hearts.
+      if (cat.pose === 'sleep' && temperament.bond) {
+        const partner = this.cats.find((other) => other.profile.id === temperament.bond);
+        if (
+          partner &&
+          partner.pose === 'sleep' &&
+          cat.profile.id < partner.profile.id &&
+          Math.hypot(partner.x - cat.x, partner.y - cat.y) < 48 &&
+          cat.cuddleClock <= 0
+        ) {
+          cat.cuddleClock = 1.4 + Math.random() * 0.8;
+          this.particles.heart((cat.x + partner.x) / 2, Math.min(cat.y, partner.y) - 16);
+        }
+      }
 
       const toPlayerX = this.player.x - cat.x;
       const toPlayerY = this.player.y - cat.y;
@@ -1224,6 +1259,37 @@ export class Game implements HudBridge {
         }
       }
 
+      // Hyper zoomies and play-chases override the ordinary amble: while a
+      // clock is running the cat keeps sprinting, picking a fresh target each
+      // frame so it never settles, sleeps or sits mid-game.
+      if (cat.zoomClock > 0 && cat.dodgeClock <= 0) {
+        if (!cat.moving || Math.hypot(cat.targetX - cat.x, cat.targetY - cat.y) < 6) {
+          this.pickZoomTarget(cat);
+        }
+      } else if (cat.playClock > 0) {
+        const mate = this.cats.find((other) => other.profile.id === cat.playMate);
+        if (!mate || mate.pose === 'sleep') {
+          cat.playClock = 0;
+          cat.moving = false;
+          cat.pose = 'idle';
+          cat.timer = 1 + Math.random();
+        } else {
+          // The lower id chases; the other flees, so they run around together.
+          const chaser = cat.profile.id < mate.profile.id;
+          if (chaser) {
+            cat.targetX = mate.x;
+            cat.targetY = mate.y;
+          } else {
+            const a = Math.atan2(cat.y - mate.y, cat.x - mate.x) || Math.random() * Math.PI * 2;
+            cat.targetX = cat.x + Math.cos(a) * 46;
+            cat.targetY = cat.y + Math.sin(a) * 34;
+          }
+          cat.moving = true;
+          cat.pose = 'walk';
+          cat.timer = cat.playClock + 0.2;
+        }
+      }
+
       if (cat.moving) {
         const dx = cat.targetX - cat.x;
         const dy = cat.targetY - cat.y;
@@ -1251,7 +1317,29 @@ export class Game implements HudBridge {
       } else if (cat.timer <= 0) {
         const sleepChance = (night ? 0.52 : 0.15) + profile.sleepiness * 0.24;
         const roll = Math.random();
-        if (roll < sleepChance) {
+        const partner = temperament.bond
+          ? this.cats.find((other) => other.profile.id === temperament.bond)
+          : undefined;
+        const partnerResting =
+          partner && (partner.pose === 'sleep' || partner.pose === 'sit' || partner.pose === 'idle');
+        const nearPartner = partner && Math.hypot(partner.x - cat.x, partner.y - cat.y) < 50;
+        const playMate = this.cats
+          .filter(
+            (other) =>
+              other !== cat && other.pose !== 'sleep' && Math.hypot(other.x - cat.x, other.y - cat.y) < 72,
+          )
+          .sort(
+            (a, b) => Math.hypot(a.x - cat.x, a.y - cat.y) - Math.hypot(b.x - cat.x, b.y - cat.y),
+          )[0];
+        if (nearPartner && partnerResting && partner && Math.random() < 0.55) {
+          // Cuddle up beside a bonded friend and doze, facing one another.
+          cat.dir = partner.x >= cat.x ? 1 : -1;
+          cat.pose = 'sleep';
+          cat.moving = false;
+          cat.timer = 8 + Math.random() * 8;
+          cat.frame = 0;
+          cat.cuddleClock = 0.5;
+        } else if (roll < sleepChance) {
           cat.pose = 'sleep';
           cat.timer = 7 + Math.random() * 9;
           cat.frame = 0;
@@ -1259,25 +1347,32 @@ export class Game implements HudBridge {
           cat.pose = 'sit';
           cat.timer = 3 + Math.random() * 5;
           cat.frame = 0;
-        } else if (temperament.zoomies && Math.random() < temperament.zoomies) {
-          // The zoomies: a sudden fast sprint to a far point, no settling.
+        } else if (playMate && Math.random() < 0.32) {
+          // Start a mutual play-chase that lasts a good while: both cats run
+          // around together, one chasing, one fleeing, re-targeted every frame.
+          const dur = 5 + Math.random() * 3.5;
+          cat.playClock = dur;
+          cat.playMate = playMate.profile.id;
           cat.pose = 'walk';
           cat.moving = true;
-          cat.zoomClock = 1.4 + Math.random() * 1.2;
-          cat.timer = cat.zoomClock + 0.4;
-          const angle = Math.random() * Math.PI * 2;
-          const distance = 60 + Math.random() * 90;
-          let tx = cat.x + Math.cos(angle) * distance;
-          let ty = cat.y + Math.sin(angle) * distance * 0.7;
-          for (let attempt = 0; attempt < 8 && catBlocked(tx, ty); attempt++) {
-            const a = Math.random() * Math.PI * 2;
-            tx = cat.x + Math.cos(a) * distance;
-            ty = cat.y + Math.sin(a) * distance * 0.7;
-          }
-          cat.targetX = catBlocked(tx, ty) ? cat.homeX : tx;
-          cat.targetY = catBlocked(tx, ty) ? cat.homeY : ty;
+          cat.timer = dur + 0.2;
           cat.emote = '!';
           cat.emoteClock = 0.8;
+          if (playMate.pose !== 'sleep') {
+            playMate.playClock = dur;
+            playMate.playMate = cat.profile.id;
+            playMate.pose = 'walk';
+            playMate.moving = true;
+            playMate.timer = dur + 0.2;
+            playMate.emote = '!';
+            playMate.emoteClock = 0.8;
+          }
+        } else if (temperament.zoomies && Math.random() < temperament.zoomies) {
+          // The zoomies: a long, fast sprint that keeps picking fresh targets —
+          // usually another cat to pounce on — so she runs the whole time.
+          cat.zoomClock = 4.5 + Math.random() * 3;
+          cat.dodgeClock = 0;
+          this.pickZoomTarget(cat);
         } else {
           cat.pose = 'walk';
           cat.moving = true;
@@ -1286,7 +1381,7 @@ export class Game implements HudBridge {
             ? this.cats.find((other) => other.profile.id === temperament.bond)
             : undefined;
           const company = Math.random() < temperament.follow && playerDistance < 170;
-          const stayNearPartner = partner && Math.random() < 0.5;
+          const stayNearPartner = partner && Math.random() < 0.6;
           const stand = Math.max(20, temperament.keepAway + 10);
           let anchorX = cat.homeX;
           let anchorY = cat.homeY;
@@ -1327,8 +1422,56 @@ export class Game implements HudBridge {
     }
   }
 
+  /** Pick a fresh sprint target for a zoomie cat — usually another cat to
+   *  pounce on (which often bolts and gets chased), otherwise a far point. */
+  private pickZoomTarget(cat: CatActor): void {
+    const mates = this.cats.filter((other) => other !== cat && other.pose !== 'sleep');
+    const mate =
+      mates.length > 0 && Math.random() < 0.7
+        ? mates[Math.floor(Math.random() * mates.length)]
+        : undefined;
+    let tx: number;
+    let ty: number;
+    if (mate) {
+      const a = Math.random() * Math.PI * 2;
+      tx = mate.x + Math.cos(a) * 8;
+      ty = mate.y + Math.sin(a) * 6;
+      if (mate.pose !== 'walk' && Math.random() < 0.5) {
+        const b = Math.random() * Math.PI * 2;
+        mate.pose = 'walk';
+        mate.moving = true;
+        mate.timer = 2.5 + Math.random() * 1.5;
+        mate.targetX = mate.x + Math.cos(b) * 48;
+        mate.targetY = mate.y + Math.sin(b) * 34;
+        mate.emote = '!';
+        mate.emoteClock = 0.8;
+      }
+    } else {
+      const a = Math.random() * Math.PI * 2;
+      const d = 80 + Math.random() * 110;
+      tx = cat.x + Math.cos(a) * d;
+      ty = cat.y + Math.sin(a) * d * 0.7;
+    }
+    for (let i = 0; i < 8 && catBlocked(tx, ty); i++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 40 + Math.random() * 90;
+      tx = cat.x + Math.cos(a) * d;
+      ty = cat.y + Math.sin(a) * d * 0.7;
+    }
+    cat.targetX = catBlocked(tx, ty) ? cat.homeX : tx;
+    cat.targetY = catBlocked(tx, ty) ? cat.homeY : ty;
+    cat.dir = cat.targetX >= cat.x ? 1 : -1;
+    cat.pose = 'walk';
+    cat.moving = true;
+    cat.timer = cat.zoomClock + 0.3;
+    cat.emote = '!';
+    cat.emoteClock = 0.6;
+  }
+
   private catSprite(cat: CatActor): Sprite {
-    const set = cat.dir > 0 ? cat.sprites : (cat.sprites.flip ?? cat.sprites);
+    // Always take the right-facing art; drawAtBase mirrors it when the cat
+    // turns around, so a cat never gets flipped twice and stuck facing right.
+    const set = cat.sprites;
     if (cat.pose === 'sleep') return set.sleep;
     if (cat.pose === 'sit') return set.sit;
     if (cat.pose === 'walk' && cat.moving) return set.walk[cat.frame % 4];
@@ -1421,13 +1564,16 @@ export class Game implements HudBridge {
   /* --------------------------------- draw ---------------------------------- */
 
   private visible(sprite: Sprite, x: number, y: number, camX: number, camY: number): boolean {
-    const left = x - sprite.bx;
-    const top = y - sprite.by;
+    const scale = sprite.scale ?? 1;
+    const width = sprite.canvas.width * scale;
+    const height = sprite.canvas.height * scale;
+    const left = x - sprite.bx * scale;
+    const top = y - sprite.by * scale;
     return (
       left < camX + VIEW_W + 12 &&
-      left + sprite.canvas.width > camX - 12 &&
+      left + width > camX - 12 &&
       top < camY + VIEW_H + 16 &&
-      top + sprite.canvas.height > camY - 16
+      top + height > camY - 16
     );
   }
 
@@ -1583,11 +1729,13 @@ export class Game implements HudBridge {
     const ctx = this.ctx;
     const camX = Math.round(this.camera.x);
     const camY = Math.round(this.camera.y);
+    ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'source-over';
     ctx.clearRect(0, 0, VIEW_W, VIEW_H);
     ctx.drawImage(this.terrain, camX, camY, VIEW_W, VIEW_H, 0, 0, VIEW_W, VIEW_H);
+    drawWater(ctx, camX, camY, this.waterClock);
 
     this.drawSoil(camX, camY);
     if (this.mode === 'playing') this.drawHighlight(camX, camY);

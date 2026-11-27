@@ -24,8 +24,8 @@
       <main id="stage" aria-label="Powshan valley">
         <canvas
           id="game"
-          width="480"
-          height="270"
+          width="960"
+          height="540"
           role="img"
           aria-label="A top-down pixel farm at the edge of a wood. A farmer in a straw hat stands by a small farmhouse."
         ></canvas>
@@ -205,11 +205,14 @@
         </header>
         <div class="sheet__body">
           <div class="menu">
-            <button class="btn btn--paper" data-action="resume" type="button">Back to the valley</button>
             <button class="btn btn--paper" data-action="journal" type="button">Field notes</button>
             <button class="btn btn--paper" data-action="about" type="button">About the valley</button>
-            <button class="btn btn--paper" data-action="mute" type="button">Sound: on</button>
             <button class="btn btn--paper" data-action="title" type="button">Save and return to title</button>
+          </div>
+          <div class="pause__sound">
+            <label for="volume">Sound</label>
+            <input id="volume" type="range" min="0" max="100" step="1" value="85" />
+            <span id="volume-value" aria-hidden="true">85</span>
           </div>
           <div class="pause__bottom">
             <button class="textbtn" data-action="reset" type="button">Start a new valley</button>
@@ -229,7 +232,6 @@
         <div class="sheet__body">
           <p id="confirm-text" class="lede">This will replace the valley you are keeping now.</p>
           <div class="confirm__actions">
-            <button class="btn btn--paper btn--inline" data-close type="button">Keep my valley</button>
             <button id="confirm-yes" class="btn btn--primary btn--inline" type="button">Start fresh</button>
           </div>
         </div>
@@ -248,7 +250,6 @@
           <p class="lede" id="sleep-text">The crops grow while you sleep. Watered soil makes all the difference.</p>
           <p class="forecast"><span>Tomorrow</span><b id="sleep-forecast">Sunny</b></p>
           <div class="confirm__actions">
-            <button class="btn btn--paper btn--inline" data-close type="button">Stay up</button>
             <button id="sleep-yes" class="btn btn--primary btn--inline" type="button">Sleep</button>
           </div>
         </div>
@@ -306,6 +307,43 @@
         </div>
         <p class="letter__sign">— Vane, who kept it before you</p>
         <button id="letter-begin" class="btn btn--primary" type="button">Open the gate</button>
+      </dialog>
+
+      <dialog id="tutorial" class="sheet sheet--small" aria-labelledby="tutorial-title">
+        <div class="sheet__grain" aria-hidden="true"></div>
+        <header class="sheet__head">
+          <div>
+            <p class="sheet__kicker">a quick note before you wander</p>
+            <h2 id="tutorial-title">How to keep the valley</h2>
+          </div>
+        </header>
+        <div class="sheet__body">
+          <p class="lede">A few things worth knowing before the gate closes behind you.</p>
+          <div class="tutorial">
+            <section>
+              <h3>Controls</h3>
+              <ul>
+                <li><b>Move</b><span>WASD or the arrow keys</span></li>
+                <li><b>Use tool</b><span>Space or F — till, water, harvest</span></li>
+                <li><b>Interact</b><span>E — talk, open, pick up</span></li>
+                <li><b>Call the cats</b><span>C</span></li>
+                <li><b>Journal</b><span>J or Tab — quests and notes</span></li>
+                <li><b>Pause / Mute</b><span>Esc / M</span></li>
+              </ul>
+            </section>
+            <section>
+              <h3>Objectives</h3>
+              <ul>
+                <li>Tend the old field — till, plant, and water it.</li>
+                <li>Befriend the cats; they warm to a quiet hand.</li>
+                <li>When the moonflowers bloom, bring three to the old well.</li>
+              </ul>
+            </section>
+          </div>
+          <div class="confirm__actions">
+            <button id="tutorial-begin" class="btn btn--primary btn--inline" type="button">Step into the meadow</button>
+          </div>
+        </div>
       </dialog>
 
       <dialog id="finale" class="sheet sheet--small sheet--finale" aria-labelledby="finale-title">

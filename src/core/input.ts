@@ -76,7 +76,9 @@ export class Input {
         this.journal = true;
         break;
       case 'Escape':
-        this.pause = true;
+        // When a dialog is open, let its native cancel (Esc) close it — setting
+        // pause here would immediately reopen the menu on the next frame.
+        if (!document.querySelector('dialog[open]')) this.pause = true;
         break;
       case 'KeyM':
         this.mute = true;

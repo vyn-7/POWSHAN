@@ -8,21 +8,27 @@ export interface Sprite {
   /** Base point sits bottom-centre, in sprite pixels. */
   bx: number;
   by: number;
+  /** Destination size relative to the canvas' own pixels. Characters paint at
+   *  2x detail and draw at 0.5 so their footprint stays on the world grid. */
+  scale?: number;
 }
 
 const sprite = (canvas: HTMLCanvasElement): Sprite => ({ canvas, bx: canvas.width / 2, by: canvas.height });
 
 export function drawAtBase(ctx: Ctx, sprite: Sprite, x: number, y: number, flip = false): void {
-  const dx = Math.round(x - sprite.bx);
-  const dy = Math.round(y - sprite.by);
+  const scale = sprite.scale ?? 1;
+  const width = sprite.canvas.width * scale;
+  const height = sprite.canvas.height * scale;
+  const dx = Math.round(x - sprite.bx * scale);
+  const dy = Math.round(y - sprite.by * scale);
   if (flip) {
     ctx.save();
-    ctx.translate(dx + sprite.canvas.width, dy);
+    ctx.translate(dx + width, dy);
     ctx.scale(-1, 1);
-    ctx.drawImage(sprite.canvas, 0, 0);
+    ctx.drawImage(sprite.canvas, 0, 0, width, height);
     ctx.restore();
   } else {
-    ctx.drawImage(sprite.canvas, dx, dy);
+    ctx.drawImage(sprite.canvas, dx, dy, width, height);
   }
 }
 

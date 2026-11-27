@@ -1,6 +1,11 @@
 /** Tiny raster helpers. Everything in the valley is painted with these, so the
  *  art stays crisp at 1x and inherits one consistent set of outlines. */
 
+/** The canvas is rendered at 2x its logical 480x270 view. Characters are drawn
+ *  from 2x canvases at half logical size, so their faces keep the extra detail
+ *  while the world stays on its familiar pixel grid. */
+export const RENDER_SCALE = 2;
+
 export type Ctx = CanvasRenderingContext2D;
 
 export function createCanvas(width: number, height: number): HTMLCanvasElement {

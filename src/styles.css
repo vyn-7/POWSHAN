@@ -72,21 +72,18 @@ button:disabled {
   position: relative;
   width: 100vw;
   height: 100dvh;
-  display: grid;
-  place-items: center;
+  display: block;
+  overflow: hidden;
   background:
     radial-gradient(circle at 50% 28%, #223021 0%, #141b13 55%, #0b0f0a 100%);
 }
 
 #stage {
   position: relative;
-  width: min(100vw, calc(100dvh * 16 / 9));
-  height: min(100dvh, calc(100vw * 9 / 16));
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: #1a2418;
-  box-shadow:
-    0 0 0 1px #080b07,
-    0 24px 70px rgba(0, 0, 0, 0.55);
   isolation: isolate;
 }
 
@@ -94,6 +91,7 @@ button:disabled {
   display: block;
   width: 100%;
   height: 100%;
+  object-fit: cover;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
   touch-action: none;
@@ -694,46 +692,172 @@ button:disabled {
   box-shadow: none;
 }
 
-@media (pointer: coarse) {
-  .touch {
-    display: block;
-  }
+/* Touch layout. The class is set from JS as well as the media query so hybrid
+ * laptops and emulators get the same dock. */
+body.is-touch .touch {
+  display: block;
+}
 
-  .hint {
-    display: none;
-  }
+body.is-touch .hint {
+  display: none;
+}
 
-  /* Dock the hotbar to the top-centre so it never collides with the
-     thumbstick (bottom-left) or the Use/Talk/Call buttons (bottom-right). */
-  .hotbar {
-    top: calc(46 * var(--u) * 1px);
-    bottom: auto;
-    gap: calc(2.5 * var(--u) * 1px);
-    padding: calc(3.5 * var(--u) * 1px);
-  }
+body.is-touch .hud__top {
+  top: max(calc(6 * var(--u) * 1px), env(safe-area-inset-top));
+  left: max(calc(6 * var(--u) * 1px), env(safe-area-inset-left));
+  right: max(calc(6 * var(--u) * 1px), env(safe-area-inset-right));
+  gap: calc(5 * var(--u) * 1px);
+}
 
-  .slot {
-    width: calc(26 * var(--u) * 1px);
-    height: calc(26 * var(--u) * 1px);
-  }
+body.is-touch .chip {
+  min-height: calc(21 * var(--u) * 1px);
+  padding: calc(3 * var(--u) * 1px) calc(5 * var(--u) * 1px);
+  font-size: calc(6.4 * var(--u) * 1px);
+}
 
-  .slot canvas {
-    width: calc(17 * var(--u) * 1px);
-    height: calc(17 * var(--u) * 1px);
-  }
+body.is-touch .chip__leaf {
+  width: calc(7 * var(--u) * 1px);
+  height: calc(7 * var(--u) * 1px);
+}
 
-  /* Lift the energy + coin chips clear of the thumbstick. */
-  .hud__left {
-    bottom: calc(84 * var(--u) * 1px);
-  }
+body.is-touch .chip__badge {
+  font-size: calc(5.6 * var(--u) * 1px);
+  padding: calc(1.5 * var(--u) * 1px) calc(3 * var(--u) * 1px);
+}
 
-  .prompt {
-    bottom: calc(84 * var(--u) * 1px);
-  }
+body.is-touch .status {
+  padding: calc(3 * var(--u) * 1px) calc(5 * var(--u) * 1px);
+  gap: 0 calc(4 * var(--u) * 1px);
+}
 
-  .dialogue {
-    bottom: calc(84 * var(--u) * 1px);
-  }
+body.is-touch .status__weather {
+  width: calc(9 * var(--u) * 1px);
+  height: calc(9 * var(--u) * 1px);
+}
+
+body.is-touch .status__weather-label,
+body.is-touch .status__date,
+body.is-touch .status__day {
+  font-size: calc(5.6 * var(--u) * 1px);
+}
+
+body.is-touch .status__time {
+  font-size: calc(8 * var(--u) * 1px);
+}
+
+/* Hotbar sits low and centred, between the thumbstick and the verbs. */
+body.is-touch .hotbar {
+  top: auto;
+  bottom: calc(8 * var(--u) * 1px + env(safe-area-inset-bottom));
+  gap: calc(2 * var(--u) * 1px);
+  padding: calc(3 * var(--u) * 1px);
+}
+
+body.is-touch .slot {
+  width: calc(27 * var(--u) * 1px);
+  height: calc(27 * var(--u) * 1px);
+}
+
+body.is-touch .slot canvas {
+  width: calc(18 * var(--u) * 1px);
+  height: calc(18 * var(--u) * 1px);
+}
+
+body.is-touch .slot__key {
+  font-size: calc(4.6 * var(--u) * 1px);
+  left: calc(2 * var(--u) * 1px);
+}
+
+body.is-touch .slot__count {
+  font-size: calc(5 * var(--u) * 1px);
+  right: calc(1.5 * var(--u) * 1px);
+}
+
+/* Energy and coins sit above the stick, not under it. */
+body.is-touch .hud__left {
+  left: max(calc(6 * var(--u) * 1px), env(safe-area-inset-left));
+  bottom: calc(78 * var(--u) * 1px + env(safe-area-inset-bottom));
+  gap: calc(3 * var(--u) * 1px);
+}
+
+body.is-touch .energy {
+  padding: calc(3 * var(--u) * 1px) calc(5 * var(--u) * 1px);
+}
+
+body.is-touch .energy__label {
+  font-size: calc(5.2 * var(--u) * 1px);
+}
+
+body.is-touch .energy__track {
+  width: calc(46 * var(--u) * 1px);
+  height: calc(5.5 * var(--u) * 1px);
+}
+
+body.is-touch .mini {
+  padding: calc(2 * var(--u) * 1px) calc(5 * var(--u) * 1px);
+  font-size: calc(6.6 * var(--u) * 1px);
+}
+
+body.is-touch .mini canvas {
+  width: calc(8 * var(--u) * 1px);
+  height: calc(8 * var(--u) * 1px);
+}
+
+body.is-touch .prompt {
+  bottom: calc(46 * var(--u) * 1px + env(safe-area-inset-bottom));
+  padding: calc(3 * var(--u) * 1px) calc(6 * var(--u) * 1px);
+  font-size: calc(6.2 * var(--u) * 1px);
+}
+
+body.is-touch .dialogue {
+  bottom: calc(48 * var(--u) * 1px + env(safe-area-inset-bottom));
+  width: min(86%, calc(320 * var(--u) * 1px));
+  grid-template-columns: calc(34 * var(--u) * 1px) 1fr auto;
+  gap: calc(5 * var(--u) * 1px);
+}
+
+body.is-touch .dialogue__portrait {
+  width: calc(34 * var(--u) * 1px);
+  height: calc(30 * var(--u) * 1px);
+}
+
+body.is-touch .dialogue__name {
+  font-size: calc(6.8 * var(--u) * 1px);
+}
+
+body.is-touch .dialogue__text {
+  font-size: calc(5.8 * var(--u) * 1px);
+  line-height: 1.35;
+}
+
+body.is-touch .toast {
+  top: calc(34 * var(--u) * 1px + env(safe-area-inset-top));
+  font-size: calc(5.8 * var(--u) * 1px);
+  max-width: 82%;
+}
+
+body.is-touch .stick {
+  left: max(calc(10 * var(--u) * 1px), env(safe-area-inset-left));
+  bottom: calc(14 * var(--u) * 1px + env(safe-area-inset-bottom));
+  width: calc(50 * var(--u) * 1px);
+  height: calc(50 * var(--u) * 1px);
+}
+
+body.is-touch .stick__knob {
+  width: calc(22 * var(--u) * 1px);
+  height: calc(22 * var(--u) * 1px);
+}
+
+body.is-touch .touch__actions {
+  right: max(calc(10 * var(--u) * 1px), env(safe-area-inset-right));
+  bottom: calc(16 * var(--u) * 1px + env(safe-area-inset-bottom));
+  gap: calc(6 * var(--u) * 1px);
+}
+
+body.is-touch .touch__btn {
+  width: calc(40 * var(--u) * 1px);
+  height: calc(40 * var(--u) * 1px);
+  font-size: calc(5.8 * var(--u) * 1px);
 }
 
 /* Short landscape phones: compress the title so nothing overflows. */
@@ -859,6 +983,15 @@ button:disabled {
   color: #f2e2bf;
   font-size: calc(10 * var(--u) * 1px);
   letter-spacing: 0.04em;
+  text-shadow: 0 calc(1 * var(--u) * 1px) 0 rgba(0, 0, 0, 0.7);
+}
+
+.title__premise {
+  max-width: 34ch;
+  margin: calc(7 * var(--u) * 1px) auto 0;
+  color: #e7cfa4;
+  font-size: calc(8.5 * var(--u) * 1px);
+  line-height: 1.5;
   text-shadow: 0 calc(1 * var(--u) * 1px) 0 rgba(0, 0, 0, 0.7);
 }
 
@@ -1816,6 +1949,87 @@ dialog::backdrop {
     2px 3px 0 rgba(20, 14, 10, 0.38);
 }
 
+.menu .btn {
+  transition: transform 0.06s ease, box-shadow 0.06s ease;
+}
+
+.menu .btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow:
+    inset 0 0 0 1px var(--paper-hi),
+    inset 0 -3px 0 rgba(89, 58, 35, 0.18),
+    3px 4px 0 rgba(20, 14, 10, 0.42);
+}
+
+.menu .btn:active {
+  transform: translate(1px, 1px);
+  box-shadow:
+    inset 0 0 0 1px var(--paper-hi),
+    inset 0 -2px 0 rgba(89, 58, 35, 0.18),
+    1px 1px 0 rgba(20, 14, 10, 0.38);
+}
+
+.pause__sound {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #e6d2a9;
+  border: 1px solid #c9ad7d;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    2px 3px 0 rgba(20, 14, 10, 0.28);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+.pause__sound input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: #c2a577;
+  border-radius: 3px;
+  outline: none;
+}
+
+.pause__sound input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -1px;
+  background: #a34a3b;
+  border: 2px solid #7a2f24;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.pause__sound input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: #a34a3b;
+  border: 2px solid #7a2f24;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.pause__sound input[type='range']:focus-visible {
+  outline: 2px solid #7a5a3d;
+  outline-offset: 3px;
+}
+
+#volume-value {
+  min-width: 24px;
+  text-align: right;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .pause__bottom {
   display: flex;
   justify-content: center;
@@ -2127,5 +2341,56 @@ dialog::backdrop {
   }
   to {
     transform: translateX(150%);
+  }
+}
+
+/* Inline gold coin used in prices and totals instead of a "g". */
+.coin-inline {
+  width: 14px;
+  height: 14px;
+  vertical-align: -3px;
+  margin-left: 1px;
+  image-rendering: pixelated;
+}
+
+/* Two-column controls/objectives card shown after the letter. */
+.tutorial {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 26px;
+  margin: 14px 0 20px;
+}
+.tutorial h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.tutorial ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 7px;
+}
+.tutorial li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.tutorial li b {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.tutorial li span {
+  text-align: right;
+  opacity: 0.72;
+}
+@media (max-width: 560px) {
+  .tutorial {
+    grid-template-columns: 1fr;
   }
 }

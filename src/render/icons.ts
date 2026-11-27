@@ -108,6 +108,13 @@ export function coinIcon(): HTMLCanvasElement {
   return finish(source);
 }
 
+let coinUrl: string | null = null;
+/** The coin as a data URL, for inline use in HTML copy (prices, totals). */
+export function coinDataUrl(): string {
+  if (!coinUrl) coinUrl = coinIcon().toDataURL();
+  return coinUrl;
+}
+
 export function weatherIcon(weather: Weather): HTMLCanvasElement {
   const source = createCanvas(16, 16);
   const ctx = context(source);

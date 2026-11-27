@@ -31,6 +31,8 @@ export interface CatProfile {
     fur: string;
     furDark: string;
     belly: string;
+    /** The muzzle patch, when it differs from the belly. */
+    muzzle?: string;
     patch?: string;
     eyes: string;
     accent?: string;
@@ -42,6 +44,8 @@ export interface CatProfile {
   };
   /** Some cats carry their dark markings on the body only. */
   headPatch?: boolean;
+  /** Long-haired cats get a little extra cheek and chest fluff. */
+  fluffy?: boolean;
   /** Where the cat likes to be, in tiles. */
   home: { x: number; y: number };
   roam: number;
@@ -60,14 +64,15 @@ export const CATS: CatProfile[] = [
     note: 'the very cuddly one',
     line: 'Sean leans into your hand before you have even reached him. The valley\u2019s softest hello.',
     colors: {
-      fur: '#e07b2e',
-      furDark: '#bf5f1d',
-      belly: '#f6efe3',
-      patch: '#f0a24a',
+      fur: '#e87a2e',
+      furDark: '#c05c19',
+      belly: '#f2a45c',
+      muzzle: '#fbf4e8',
+      patch: '#f19a4a',
       eyes: '#3a2f28',
-      accent: '#f6efe3',
-      toes: '#f6efe3',
+      toes: '#fbf4e8',
     },
+    fluffy: true,
     home: { x: 12.5, y: 12.2 },
     roam: 3.2,
     sleepiness: 0.45,
@@ -89,12 +94,12 @@ export const CATS: CatProfile[] = [
       eyes: '#4552a2',
       accent: '#e0d6ca',
     },
-    home: { x: 28.6, y: 27.6 },
+    home: { x: 13.6, y: 12.9 },
     roam: 1.6,
-    sleepiness: 0.9,
-    energy: 0.28,
+    sleepiness: 0.55,
+    energy: 0.4,
     voice: 2,
-    temperament: { follow: 0.2, keepAway: 12, answers: 0.45, dodgesPat: false, settles: 9, bond: 'sean' },
+    temperament: { follow: 0.5, keepAway: 5, answers: 0.7, dodgesPat: false, settles: 6, bond: 'sean' },
   },
   {
     id: 'uling',
@@ -107,14 +112,13 @@ export const CATS: CatProfile[] = [
       furDark: '#211d1a',
       belly: '#514942',
       eyes: '#e8e18c',
-      accent: '#7c2424',
     },
     home: { x: 49.5, y: 12.5 },
     roam: 6.5,
     sleepiness: 0.2,
     energy: 1,
     voice: 4,
-    temperament: { follow: 0.1, keepAway: 52, answers: 0.12, dodgesPat: false, settles: 0 },
+    temperament: { follow: 0.1, keepAway: 52, answers: 0.12, dodgesPat: false, settles: 0, zoomies: 0.45 },
   },
   {
     id: 'adidas',

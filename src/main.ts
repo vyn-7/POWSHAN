@@ -7,13 +7,17 @@ const game = new Game(canvas);
 
 /* The DOM HUD is authored in game units: one unit is one 480x270 pixel. */
 const stage = document.getElementById('stage');
+const isTouch = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+if (isTouch) document.body.classList.add('is-touch');
 const fitUi = (): void => {
   if (!stage) return;
-  const unit = Math.max(1.8, Math.min(3.1, stage.clientWidth / 480));
+  // Fit the HUD to the shorter axis so it never dwarfs a phone in landscape.
+  const unit = Math.max(1.2, Math.min(3, Math.min(window.innerWidth / 480, window.innerHeight / 270)));
   document.documentElement.style.setProperty('--u', unit.toFixed(3));
 };
 fitUi();
 window.addEventListener('resize', fitUi);
+window.addEventListener('orientationchange', fitUi);
 
 /* Boot card: hold just long enough for the pixel font and first frame. */
 const boot = document.getElementById('boot');

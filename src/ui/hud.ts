@@ -1,6 +1,6 @@
 import { CROPS, HOTBAR, ITEMS, type CropId, type ItemId } from '../data/crops';
 import { CATS } from '../data/cats';
-import { coinIcon, itemIcon, leafSprite, weatherIcon } from '../render/icons';
+import { coinDataUrl, coinIcon, itemIcon, leafSprite, weatherIcon } from '../render/icons';
 import { catPortrait } from '../render/cats';
 import { farmerBust, type FarmerAvatar } from '../render/farmer';
 import { QUESTS, completedCount, questDone, type QuestProgress } from '../systems/quests';
@@ -15,6 +15,7 @@ export interface HudBridge {
   openJournal(tab?: 'notes' | 'cats' | 'build'): void;
   selectSlot(index: number): void;
   toggleMute(): boolean;
+  setVolume(volume: number): void;
   buySeed(crop: CropId): void;
   sellProduce(): void;
   sleep(): void;
@@ -41,12 +42,6 @@ export interface HudView {
 const must = <T extends HTMLElement>(id: string): T => {
   const node = document.getElementById(id);
   if (!node) throw new Error(`Missing element #${id}`);
-  return node as T;
-};
-
-const query = <T extends HTMLElement>(selector: string): T => {
-  const node = document.querySelector(selector);
-  if (!node) throw new Error(`Missing element ${selector}`);
   return node as T;
 };
 
@@ -92,6 +87,9 @@ export class Hud {
   private readonly sleepDialog = must<HTMLDialogElement>('sleep');
   private readonly intro = must<HTMLDialogElement>('intro');
   private readonly letter = must<HTMLDialogElement>('letter');
+  private readonly tutorial = must<HTMLDialogElement>('tutorial');
+  /** Show the controls/objectives card once, after a brand-new valley's letter. */
+  private tutorialPending = false;
   private readonly finale = must<HTMLDialogElement>('finale');
   private readonly shopBody = must<HTMLElement>('shop-body');
   private readonly shopGold = must<HTMLElement>('shop-gold');
@@ -115,7 +113,8 @@ export class Hud {
   private readonly hint = must<HTMLElement>('hint');
   private readonly hotbar = must<HTMLElement>('hotbar');
   private readonly journalButton = must<HTMLButtonElement>('journal-btn');
-  private readonly muteButton = query<HTMLButtonElement>('#pause [data-action="mute"]');
+  private readonly volumeSlider = must<HTMLInputElement>('volume');
+  private readonly volumeValue = must<HTMLElement>('volume-value');
   private readonly sleepForecast = must<HTMLElement>('sleep-forecast');
   private readonly finaleStats = must<HTMLElement>('finale-stats');
   private readonly farmerName = must<HTMLInputElement>('farmer-name');
@@ -159,6 +158,7 @@ export class Hud {
   private beginValley(): void {
     const name = this.farmerName.value.trim().slice(0, 16) || 'Rowan';
     this.intro.close();
+    this.tutorialPending = true;
     this.bridge?.beginValley(name, this.avatar);
   }
 
@@ -182,6 +182,7 @@ export class Hud {
       this.sleepDialog,
       this.intro,
       this.letter,
+      this.tutorial,
       this.finale,
     ].some((dialog) => dialog.open);
   }
@@ -265,7 +266,7 @@ export class Hud {
       });
     }
 
-    for (const dialog of [this.journal, this.shop, this.pause, this.confirm, this.sleepDialog, this.letter, this.finale]) {
+    for (const dialog of [this.journal, this.shop, this.pause, this.confirm, this.sleepDialog, this.letter, this.tutorial, this.finale]) {
       dialog.addEventListener('close', () => {
         if (this.titleVisible) return;
         if (!this.modalOpen) this.bridge?.resume();
@@ -280,17 +281,12 @@ export class Hud {
       const target = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-action]');
       if (!target) return;
       const action = target.dataset.action;
-      if (action === 'resume') {
-        this.pause.close();
-      } else if (action === 'journal') {
+      if (action === 'journal') {
         this.pause.close();
         this.bridge?.openJournal();
       } else if (action === 'about') {
         this.pause.close();
         this.bridge?.openJournal('build');
-      } else if (action === 'mute') {
-        const muted = this.bridge?.toggleMute() ?? false;
-        target.textContent = muted ? 'Sound: off' : 'Sound: on';
       } else if (action === 'title') {
         this.closeAll();
         this.bridge?.returnToTitle();
@@ -310,8 +306,24 @@ export class Hud {
       this.bridge?.sleep();
     });
 
+    this.volumeSlider.addEventListener('input', () => {
+      const pct = Number(this.volumeSlider.value);
+      this.volumeValue.textContent = String(pct);
+      this.bridge?.setVolume(pct / 100);
+    });
+
     must<HTMLButtonElement>('letter-begin').addEventListener('click', () => {
       this.letter.close();
+      if (this.tutorialPending) {
+        this.tutorialPending = false;
+        this.open(this.tutorial);
+      } else {
+        this.bridge?.letterDone();
+      }
+    });
+
+    must<HTMLButtonElement>('tutorial-begin').addEventListener('click', () => {
+      this.tutorial.close();
       this.bridge?.letterDone();
     });
 
@@ -349,20 +361,14 @@ export class Hud {
 
   /* -------------------------------- title -------------------------------- */
 
-  showTitle(hasSave: boolean, summary: SaveSummary | null): void {
+  showTitle(hasSave: boolean, _summary: SaveSummary | null): void {
     this.title.classList.remove('is-hidden');
     this.hud.classList.add('is-hidden');
     this.play.textContent = hasSave ? 'Continue in the valley' : 'Step into the meadow';
     this.setFreshVisible(hasSave);
-    if (hasSave && summary) {
-      const bits = [`Day ${summary.day}`, `${summary.gold}g`, `${summary.cats} / ${CATS.length} cats`];
-      if (summary.awake) bits.push('the well is awake');
-      this.titleSave.textContent = bits.join('  ·  ');
-      this.titleSave.classList.remove('is-hidden');
-    } else {
-      this.titleSave.textContent = '';
-      this.titleSave.classList.add('is-hidden');
-    }
+    // No save summary line on the title — keep it out of the way.
+    this.titleSave.textContent = '';
+    this.titleSave.classList.add('is-hidden');
   }
 
   private setFreshVisible(visible: boolean): void {
@@ -481,8 +487,11 @@ export class Hud {
     this.cardTimer = window.setTimeout(() => this.daycard.classList.remove('is-visible'), 2600);
   }
 
-  setMuted(muted: boolean): void {
-    this.muteButton.textContent = muted ? 'Sound: off' : 'Sound: on';
+  /** Reflect the current master volume (0..1) on the pause-menu slider. */
+  setVolume(volume: number): void {
+    const pct = Math.round(Math.max(0, Math.min(1, volume)) * 100);
+    this.volumeSlider.value = String(pct);
+    this.volumeValue.textContent = String(pct);
   }
 
   /* -------------------------------- panels -------------------------------- */
@@ -496,6 +505,7 @@ export class Hud {
       this.sleepDialog,
       this.intro,
       this.letter,
+      this.tutorial,
       this.finale,
     ]) {
       if (dialog.open) dialog.close();
@@ -637,10 +647,10 @@ export class Hud {
             <div>
               <h3 class="seed__name">${SEED_LABEL[crop]} seeds</h3>
               <p class="seed__desc">${def.blurb}</p>
-              <p class="seed__meta">${def.days} watered nights · ${def.sellable ? `sells for ${def.sell}g` : 'for the old well'} · ${owned} in your bag</p>
+              <p class="seed__meta">${def.days} watered nights · ${def.sellable ? `sells for ${def.sell}<img class="coin-inline" src="${coinDataUrl()}" alt="gold" />` : 'for the old well'} · ${owned} in your bag</p>
             </div>
             <button class="btn seed__buy" type="button" data-buy="${crop}" ${affordable ? '' : 'disabled'}>
-              ${def.buy}g
+              ${def.buy}<img class="coin-inline" src="${coinDataUrl()}" alt="gold" />
             </button>
           </article>`;
       })
@@ -660,7 +670,7 @@ export class Hud {
       <div class="seedlist">${rows}</div>
       <div class="sell">
         <p class="sell__text">${basketText}<br /><span class="muted">${moons > 0 ? `${moons} moonflower${moons === 1 ? '' : 's'} saved for the well.` : 'Moonflowers are not for sale.'}</span></p>
-        <button class="btn" type="button" data-sell ${total > 0 ? '' : 'disabled'}>Sell for ${total}g</button>
+        <button class="btn" type="button" data-sell ${total > 0 ? '' : 'disabled'}>Sell for ${total}<img class="coin-inline" src="${coinDataUrl()}" alt="gold" /></button>
       </div>
     `;
     for (const holder of Array.from(this.shopBody.querySelectorAll<HTMLElement>('[data-art]'))) {
@@ -671,9 +681,9 @@ export class Hud {
     }
   }
 
-  openPause(muted: boolean): void {
+  openPause(volume: number): void {
     this.closeAll();
-    this.setMuted(muted);
+    this.setVolume(volume);
     this.open(this.pause);
   }
 
